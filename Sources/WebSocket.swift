@@ -35,10 +35,6 @@
 @_exported import HTTPParser
 @_exported import Hanger
 @_exported import Crypto
-@_exported import Skelton
-//@_exported import Event
-//@_exported import Base64
-//@_exported import OpenSSL
 
 internal extension Data {
     init<T>(number: T) {

@@ -12,7 +12,7 @@ public class WebSocketServer {
         case InvalidHeaderValue(message: String)
     }
 
-    public init(to request: Request, with stream: HTTPStream, onConnect: (Void throws -> WebSocket) -> Void){
+    public init(to request: Request, with stream: AsyncStream, onConnect: (Void throws -> WebSocket) -> Void){
         guard request.isWebSocket && request.webSocketVersion == "13", let key = request.webSocketKey else {
             onConnect {
                 throw Error.InvalidHeaderValue(message: "The request has unsatisfied WebSocket headers.")
