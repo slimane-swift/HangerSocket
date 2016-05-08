@@ -69,4 +69,4 @@ WebSocketClient(uri: uri) {
 
 ## Licence
 
-HangerSocket is released under the MIT license. See LICENSE for details.
+WS is released under the MIT license. See LICENSE for details.
