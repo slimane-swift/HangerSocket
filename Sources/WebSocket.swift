@@ -209,9 +209,9 @@ public class WebSocket {
             do {
                 let data = try $0()
                 try _self.processData(data)
-                if _self.closeState == .Open {
-                    try _self.closeEventEmitter.emit((code: .Abnormal, reason: nil))
-                }
+//                if _self.closeState == .Open {
+//                    try _self.closeEventEmitter.emit((code: .Abnormal, reason: nil))
+//                }
             } catch StreamError.closedStream {
                 return
             } catch {
@@ -491,9 +491,11 @@ public class WebSocket {
             }
             let frame = Frame(opCode: opCode, data: data, maskKey: maskKey)
             let data = frame.getData()
-            stream.send(data) {  _ in
-                completion {
-                    self.stream.flush() { _ in }
+            stream.send(data) { [weak self] _ in
+                if let _self = self {
+                    completion {
+                        _self.stream.flush() { _ in }
+                    }
                 }
             }
         } catch {
@@ -526,4 +528,10 @@ public class WebSocket {
             })
     }
     
+}
+
+extension WebSocket: Equatable {}
+
+public func ==(lhs: WebSocket, rhs: WebSocket) -> Bool {
+    return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
 }
