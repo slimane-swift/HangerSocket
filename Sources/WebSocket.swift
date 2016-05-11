@@ -6,8 +6,8 @@
 //
 //
 
-//
 // Socket.swift
+//
 // The MIT License (MIT)
 //
 // Copyright (c) 2015 Zewo
@@ -112,13 +112,11 @@ public class WebSocket {
     private var frames: [Frame] = []
     private var buffer: Data = []
     
-    
     private let binaryEventEmitter = EventEmitter<Data>()
     private let textEventEmitter = EventEmitter<String>()
     private let pingEventEmitter = EventEmitter<Data>()
     private let pongEventEmitter = EventEmitter<Data>()
     private let closeEventEmitter = EventEmitter<(code: CloseCode?, reason: String?)>()
-    private let errorEventEmitter = EventEmitter<ErrorProtocol>()
     
     init(stream: AsyncStream, mode: Mode, request: Request, response: Response) {
         self.stream = stream
@@ -143,23 +141,19 @@ public class WebSocket {
         return pongEventEmitter.addListener(listen: listen)
     }
     
-    public func onError(_ listen: EventListener<ErrorProtocol>.Listen) -> EventListener<ErrorProtocol> {
-        return errorEventEmitter.addListener(listen: listen)
-    }
-    
     public func onClose(_ listen: EventListener<(code: CloseCode?, reason: String?)>.Listen) -> EventListener<(code: CloseCode?, reason: String?)> {
         return closeEventEmitter.addListener(listen: listen)
     }
     
-    public func send(_ string: String, completion: (Void throws -> Void) -> Void = {_ in}) {
+    public func send(_ string: String, completion: ((Void) throws -> Void) -> Void = {_ in}) {
         send(.Text, data: string.data, completion: completion)
     }
     
-    public func send(_ data: Data, completion: (Void throws -> Void) -> Void = {_ in}) {
+    public func send(_ data: Data, completion: ((Void) throws -> Void) -> Void = {_ in}) {
         send(.Binary, data: data, completion: completion)
     }
     
-    public func send(_ convertible: DataConvertible, completion: (Void throws -> Void) -> Void = {_ in}) {
+    public func send(_ convertible: DataConvertible, completion: ((Void) throws -> Void) -> Void = {_ in}) {
         send(.Binary, data: convertible.data, completion: completion)
     }
     
@@ -178,26 +172,26 @@ public class WebSocket {
             data += reason
         }
         
-        send(.Close, data: data)
+        try send(.Close, data: data)
         
         if closeState == .ClientClose {
             try stream.close()
         }
     }
-
-    public func ping(_ data: Data = [], completion: (Void throws -> Void) -> Void = {_ in}) {
+    
+    public func ping(_ data: Data = [], completion: ((Void) throws -> Void) -> Void = {_ in}) {
         send(.Ping, data: data, completion: completion)
     }
     
-    public func ping(_ convertible: DataConvertible, completion: (Void throws -> Void) -> Void = {_ in}) {
+    public func ping(_ convertible: DataConvertible, completion: ((Void) throws -> Void) -> Void = {_ in}) {
         send(.Ping, data: convertible.data, completion: completion)
     }
     
-    public func pong(_ data: Data = [], completion: (Void throws -> Void) -> Void = {_ in}) {
+    public func pong(_ data: Data = [], completion: ((Void) throws -> Void) -> Void = {_ in}) {
         send(.Pong, data: data, completion: completion)
     }
     
-    public func pong(_ convertible: DataConvertible, completion: (Void throws -> Void) -> Void = {_ in}) {
+    public func pong(_ convertible: DataConvertible, completion: ((Void) throws -> Void) -> Void = {_ in}) {
         send(.Pong, data: convertible.data, completion: completion)
     }
     
@@ -215,7 +209,7 @@ public class WebSocket {
             } catch StreamError.closedStream {
                 return
             } catch {
-                do { try _self.errorEventEmitter.emit(error) } catch {}
+                do { try _self.closeEventEmitter.emit((code: .Abnormal, reason: nil)) } catch {}
             }
         }
     }
@@ -377,7 +371,7 @@ public class WebSocket {
                 try processFrames()
             }
             
-            let ind = frames.endIndex.predecessor()
+            let ind = frames.endIndex - 1
             if ind >= 0 && ind < frames.count {
                 frames[ind] = frame
             }
@@ -415,7 +409,7 @@ public class WebSocket {
                 state = .Header
                 try processFrames()
             }
-            let ind = frames.endIndex.predecessor()
+            let ind = frames.endIndex - 1
             if ind >= 0 && ind < frames.count {
                 frames[ind] = frame
             }
@@ -481,7 +475,7 @@ public class WebSocket {
         }
     }
     
-    private func send(_ opCode: Frame.OpCode, data: Data, completion: (Void throws -> Void) -> Void = { _ in }) {
+    private func send(_ opCode: Frame.OpCode, data: Data, completion: ((Void) throws -> Void) -> Void = { _ in }) {
         do {
             let maskKey: Data
             if mode == .Client {
@@ -505,10 +499,10 @@ public class WebSocket {
         }
     }
     
-    static func accept(loop: Loop = Loop.defaultLoop, key: String, completion: (Void throws -> String?) -> Void) {
+    static func accept(loop: Loop = Loop.defaultLoop, key: String, completion: ((Void) throws -> String?) -> Void) {
         var err: ErrorProtocol? = nil
         var encoded: String? = nil
-
+        
         Process.qwork(loop: loop, onThread: {
             do {
                 encoded = try Base64.encode(Crypto.Hasher(.SHA1).hashSync((key + GUID)).bufferd)
@@ -525,7 +519,7 @@ public class WebSocket {
                         encoded
                     }
                 }
-            })
+        })
     }
     
 }

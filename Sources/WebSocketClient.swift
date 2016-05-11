@@ -22,7 +22,7 @@ public struct WebSocketClient {
     
     public let loop: Loop
     
-    public init(loop: Loop = Loop.defaultLoop, uri: URI, onConnect: (Void throws -> WebSocket) -> Void) {
+    public init(loop: Loop = Loop.defaultLoop, uri: URI, onConnect: ((Void) throws -> WebSocket) -> Void) {
         self.uri = uri
         let request = Request(uri: uri)
         self.loop = loop
@@ -30,7 +30,7 @@ public struct WebSocketClient {
         connect(onConnect: onConnect)
     }
     
-    private func connect(onConnect: (Void throws -> WebSocket) -> Void){
+    private func connect(onConnect: ((Void) throws -> WebSocket) -> Void){
         do {
             let key = try Base64.encode(Crypto.randomBytesSync(16).bufferd)
             
@@ -74,7 +74,7 @@ public struct WebSocketClient {
         }
     }
     
-    private func onConnect(request: Request, response: Response, key: String, completion: (Void throws -> WebSocket) -> Void){
+    private func onConnect(request: Request, response: Response, key: String, completion: ((Void) throws -> WebSocket) -> Void){
         guard response.status == .switchingProtocols && response.isWebSocket else {
             return completion {
                 throw Error.ResponseNotWebsocket
