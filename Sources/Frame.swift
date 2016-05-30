@@ -133,10 +133,12 @@ struct Frame {
         
         if masked {
             data += maskKey
+            for (index, bytedata) in self.data.bytes.enumerated() {
+                data.append(bytedata ^ self.maskKey[index % self.maskKey.count])
+            }
+        } else {
+            data += self.data
         }
-        
-        data += self.data
-        
         return data
     }
     
