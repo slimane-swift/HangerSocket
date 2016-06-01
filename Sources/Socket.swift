@@ -103,6 +103,8 @@ public class WebSocket {
     public let mode: Mode
     public let request: Request
     public let response: Response
+    public var storage: [String: Any] = [:]
+    
     private let stream: AsyncStream
     private var state: State = .Header
     private var closeState: CloseState = .Open
@@ -518,7 +520,6 @@ public class WebSocket {
                 }
         })
     }
-    
 }
 
 extension WebSocket: Equatable {}
