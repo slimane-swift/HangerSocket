@@ -8,7 +8,11 @@ class WebSocketTests: XCTestCase {
 }
 
 extension WebSocketTests {
+<<<<<<< HEAD
     static var allTests: [(String, WebSocketTests -> () throws -> Void)] {
+=======
+    static var allTests: [(String, (WebSocketTests) -> () throws -> Void)] {
+>>>>>>> upstream/master
         return [
            ("testReality", testReality),
         ]

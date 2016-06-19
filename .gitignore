@@ -29,4 +29,7 @@ xcuserdata
 *.xcuserstate
 *.xcscmblueprint
 XcodeDevelopment/
+<<<<<<< HEAD
 *.xcodeproj
+=======
+>>>>>>> upstream/master

@@ -30,22 +30,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-@_exported import Hanger
-@_exported import Crypto
+import HTTP
+import HTTPParser
+import AsyncHTTPSerializer
 
 public enum ClientError: ErrorProtocol {
-    case wsSchemeRequired
+    case unsupportedScheme
     case hostRequired
+    case responseNotWebsocket
 }
 
 public struct WebSocketClient {
-    
-    public enum Error: ErrorProtocol {
-        case NoRequest
-        case ResponseNotWebsocket
-    }
-    
-    let connection: ClientConnection
+    let connection: TCPClient
     
     public let uri: URI
     
@@ -55,31 +51,30 @@ public struct WebSocketClient {
         self.uri = uri
         let request = Request(uri: uri)
         self.loop = loop
-        self.connection = ClientConnection(loop: loop, uri: request.uri)
+        self.connection = TCPClient(loop: loop, uri: request.uri)
         connect(onConnect: onConnect)
     }
     
     private func connect(onConnect: ((Void) throws -> WebSocket) -> Void){
         do {
-            let key = try Base64.encode(Crypto.randomBytesSync(16).bufferd)
+            let key = try Base64.encode(Crypto.randomBytesSync(16))
             
             let headers: Headers = [
                 "Connection": "Upgrade",
                 "Upgrade": "websocket",
                 "Sec-WebSocket-Version": "13",
-                "Sec-WebSocket-Key": [key],
+                "Sec-WebSocket-Key": key,
             ]
             
-            var request = Request(method: .get, uri: self.uri, headers: headers)
+            let request = Request(method: .get, uri: self.uri, headers: headers)
             
             // callback hell....
-            try connection.open { f in
+            try connection.open { getConnection in
                 do {
-                    try self.connection.send(request.serialize())
-                    
+                    let connection = try getConnection()
+                    AsyncHTTPSerializer.RequestSerializer().serialize(request, to: connection)
                     let parser = ResponseParser()
-                    
-                    self.connection.receive {
+                    connection.receive(upTo: 2048, timingOut: .never) {
                         do {
                             if let response = try parser.parse(try $0()) {
                                 self.onConnect(request: request, response: response, key: key, completion: onConnect)
@@ -106,21 +101,40 @@ public struct WebSocketClient {
     private func onConnect(request: Request, response: Response, key: String, completion: ((Void) throws -> WebSocket) -> Void){
         guard response.status == .switchingProtocols && response.isWebSocket else {
             return completion {
-                throw Error.ResponseNotWebsocket
+                throw ClientError.responseNotWebsocket
             }
         }
         
-        WebSocket.accept(key: key) { f in
+        WebSocket.accept(key: key) { result in
             let accept = response.webSocketAccept
             completion {
-                guard try accept == f() else {
-                    throw Error.ResponseNotWebsocket
+                guard try accept == result() else {
+                    throw ClientError.responseNotWebsocket
                 }
                 
-                let socket = WebSocket(stream: self.connection, mode: .Client, request: request, response: response)
-                socket.receiveStart()
+                let socket = WebSocket(stream: self.connection, mode: .client)
+                socket.start()
                 return socket
             }
         }
+    }
+}
+
+
+public extension Response {
+    public var webSocketVersion: String? {
+        return headers["Sec-Websocket-Version"]
+    }
+
+    public var webSocketKey: String? {
+        return headers["Sec-Websocket-Key"]
+    }
+
+    public var webSocketAccept: String? {
+        return headers["Sec-WebSocket-Accept"]
+    }
+
+    public var isWebSocket: Bool {
+        return connection?.lowercased() == "upgrade" && upgrade?.lowercased() == "websocket"
     }
 }
