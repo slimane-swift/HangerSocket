@@ -26,6 +26,7 @@ import Event
 @_exported import Suv
 @_exported import HTTP
 @_exported import Crypto
+@_exported import S4
 
 public enum WebSocketError: ErrorProtocol {
     case noFrame

@@ -30,28 +30,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-
-import AsyncHTTPSerializer
-
-public class WebSocketServer {
+public class WebSocketServer: AsyncResponder, AsyncMiddleware {
     
-    enum Error: ErrorProtocol {
-        case InvalidHeaderValue(message: String)
+    private let didConnect: (WebSocket, Request) -> Void
+    
+    public init(_ didConnect: (WebSocket, Request) -> Void) {
+        self.didConnect = didConnect
     }
-
-    public init(request: Request, to stream: AsyncStream, onConnect: ((Void) throws -> WebSocket) -> Void){
+    
+    public func respond(to request: Request, chainingTo chain: AsyncResponder, result: ((Void) throws -> Response) -> Void) {
         guard request.isWebSocket && request.webSocketVersion == "13", let key = request.webSocketKey else {
-            onConnect {
-                throw Error.InvalidHeaderValue(message: "The request has unsatisfied WebSocket headers.")
-            }
-            return
+            return chain.respond(to: request, result: result)
         }
         
-        WebSocket.accept(key: key) {
+        WebSocket.accept(key: key) { accept in
             do {
-                guard let accept = try $0() else {
-                    return onConnect {
-                        throw Error.InvalidHeaderValue(message: "The requested Sec-Websocket-Key is invaid format.")
+                guard let accept = try accept() else {
+                    return result {
+                        throw S4.ServerError.internalServerError
                     }
                 }
                 
@@ -61,21 +57,32 @@ public class WebSocketServer {
                     "Sec-WebSocket-Accept": accept
                 ]
                 
-                let response = Response(status: .switchingProtocols, headers: headers)
-                AsyncHTTPSerializer.ResponseSerializer().serialize(response, to: stream) { result in
-                    onConnect {
-                        try result()
-                        let socket = WebSocket(stream: stream, mode: .server)
-                        socket.start()
-                        return socket
-                    }
+                let upgrade: (Request, AsyncStream) -> Void = { request, stream in
+                    let socket = WebSocket(stream: stream, mode: .server)
+                    self.didConnect(socket, request)
+                    socket.start()
+                }
+                var response = Response(status: .switchingProtocols, headers: headers)
+                response.didUpgradeAsync = upgrade
+                result {
+                    response
                 }
             } catch {
-                onConnect {
+                result {
                     throw error
                 }
             }
         }
+    }
+
+    public func respond(to request: Request, result: ((Void) throws -> Response) -> Void) {
+        let badRequest = BasicAsyncResponder { _, result in
+            result {
+                throw S4.ClientError.badRequest
+            }
+        }
+        
+        return respond(to: request, chainingTo: badRequest, result: result)
     }
 }
 
