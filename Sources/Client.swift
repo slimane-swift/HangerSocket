@@ -34,7 +34,7 @@ import HTTP
 import HTTPParser
 import AsyncHTTPSerializer
 
-public enum ClientError: ErrorProtocol {
+public enum ClientError: Error {
     case unsupportedScheme
     case hostRequired
     case responseNotWebsocket
@@ -47,7 +47,7 @@ public struct WebSocketClient {
     
     public let loop: Loop
     
-    public init(loop: Loop = Loop.defaultLoop, uri: URI, onConnect: ((Void) throws -> WebSocket) -> Void) {
+    public init(loop: Loop = Loop.defaultLoop, uri: URI, onConnect: @escaping ((Void) throws -> WebSocket) -> Void) {
         self.uri = uri
         let request = Request(uri: uri)
         self.loop = loop
@@ -55,7 +55,7 @@ public struct WebSocketClient {
         connect(onConnect: onConnect)
     }
     
-    private func connect(onConnect: ((Void) throws -> WebSocket) -> Void){
+    private func connect(onConnect: @escaping ((Void) throws -> WebSocket) -> Void){
         do {
             let key = try Base64.encode(Crypto.randomBytesSync(16))
             
@@ -72,11 +72,11 @@ public struct WebSocketClient {
             try connection.open { getConnection in
                 do {
                     let connection = try getConnection()
-                    AsyncHTTPSerializer.RequestSerializer().serialize(request, to: connection)
+                    AsyncHTTPSerializer.RequestSerializer(stream: connection).serialize(request) { _ in}
                     let parser = ResponseParser()
                     connection.receive(upTo: 2048, timingOut: .never) {
                         do {
-                            if let response = try parser.parse(try $0()) {
+                            if let response = try parser.parse(data: try $0()) {
                                 self.onConnect(request: request, response: response, key: key, completion: onConnect)
                             }
                         } catch {
@@ -98,7 +98,7 @@ public struct WebSocketClient {
         }
     }
     
-    private func onConnect(request: Request, response: Response, key: String, completion: ((Void) throws -> WebSocket) -> Void){
+    private func onConnect(request: Request, response: Response, key: String, completion: @escaping ((Void) throws -> WebSocket) -> Void){
         guard response.status == .switchingProtocols && response.isWebSocket else {
             return completion {
                 throw ClientError.responseNotWebsocket

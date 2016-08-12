@@ -43,19 +43,19 @@ func reverseBytes(_ value: UInt32) -> UInt32 {
 }
 
 func arrayOfBytes<T>(_ value: T, length: Int? = nil) -> [UInt8] {
-    let totalBytes = length ?? sizeof(T)
+    let totalBytes = length ?? sizeof(T.self)
 
-    let valuePointer = UnsafeMutablePointer<T>(allocatingCapacity: 1)
+    let valuePointer = UnsafeMutablePointer<T>.allocate(capacity: 1)
     valuePointer.pointee = value
 
-    let bytesPointer = UnsafeMutablePointer<UInt8>(valuePointer)
+    let bytesPointer =  unsafeBitCast(valuePointer, to: UnsafeMutablePointer<UInt8>.self)
     var bytes = [UInt8](repeating: 0, count: totalBytes)
-    for j in 0..<min(sizeof(T),totalBytes) {
+    for j in 0..<min(sizeof(T.self),totalBytes) {
         bytes[totalBytes - 1 - j] = (bytesPointer + j).pointee
     }
 
     valuePointer.deinitialize(count: 1)
-    valuePointer.deallocateCapacity(1)
+    valuePointer.deallocate(capacity: 1)
 
     return bytes
 }
@@ -63,7 +63,7 @@ func arrayOfBytes<T>(_ value: T, length: Int? = nil) -> [UInt8] {
 func toUInt32Array(_ slice: ArraySlice<UInt8>) -> Array<UInt32> {
     var result = Array<UInt32>()
     result.reserveCapacity(16)
-    for idx in stride(from: slice.startIndex, to: slice.endIndex, by: sizeof(UInt32)) {
+    for idx in stride(from: slice.startIndex, to: slice.endIndex, by: sizeof(UInt32.self)) {
         let val1:UInt32 = (UInt32(slice[idx.advanced(by: 3)]) << 24)
         let val2:UInt32 = (UInt32(slice[idx.advanced(by: 2)]) << 16)
         let val3:UInt32 = (UInt32(slice[idx.advanced(by: 1)]) << 8)

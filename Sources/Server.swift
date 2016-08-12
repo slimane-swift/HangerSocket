@@ -33,16 +33,16 @@
 
 import AsyncHTTPSerializer
 
-public class WebSocketServer {
-    
-    enum Error: ErrorProtocol {
-        case InvalidHeaderValue(message: String)
-    }
+public enum ServerError: Error {
+    case invalidHeaderValue(message: String)
+}
 
-    public init(request: Request, to stream: AsyncStream, onConnect: ((Void) throws -> WebSocket) -> Void){
+public class WebSocketServer {
+
+    public init(request: Request, to stream: AsyncStream, onConnect: @escaping ((Void) throws -> WebSocket) -> Void){
         guard request.isWebSocket && request.webSocketVersion == "13", let key = request.webSocketKey else {
             onConnect {
-                throw Error.InvalidHeaderValue(message: "The request has unsatisfied WebSocket headers.")
+                throw ServerError.invalidHeaderValue(message: "The request has unsatisfied WebSocket headers.")
             }
             return
         }
@@ -51,7 +51,7 @@ public class WebSocketServer {
             do {
                 guard let accept = try $0() else {
                     return onConnect {
-                        throw Error.InvalidHeaderValue(message: "The requested Sec-Websocket-Key is invaid format.")
+                        throw ServerError.invalidHeaderValue(message: "The requested Sec-Websocket-Key is invaid format.")
                     }
                 }
                 
@@ -62,7 +62,7 @@ public class WebSocketServer {
                 ]
                 
                 let response = Response(status: .switchingProtocols, headers: headers)
-                AsyncHTTPSerializer.ResponseSerializer().serialize(response, to: stream) { result in
+                AsyncHTTPSerializer.ResponseSerializer(stream: stream).serialize(response) { result in
                     onConnect {
                         try result()
                         let socket = WebSocket(stream: stream, mode: .server)
