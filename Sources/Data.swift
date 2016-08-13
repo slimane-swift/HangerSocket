@@ -24,16 +24,17 @@
 
 extension Data {
     init<T>(number: T) {
-        let totalBytes = sizeof(T)
-        let valuePointer = UnsafeMutablePointer<T>(allocatingCapacity: 1)
+        let totalBytes = sizeof(T.self)
+        let valuePointer = UnsafeMutablePointer<T>.allocate(capacity: 1)
         valuePointer.pointee = number
-        let bytesPointer = UnsafeMutablePointer<Byte>(valuePointer)
+
+        let bytesPointer = unsafeBitCast(valuePointer, to: UnsafeMutablePointer<Byte>.self)
         var bytes = [UInt8](repeating: 0, count: totalBytes)
         for j in 0 ..< totalBytes {
             bytes[totalBytes - 1 - j] = (bytesPointer + j).pointee
         }
         valuePointer.deinitialize()
-        valuePointer.deallocateCapacity(1)
+        valuePointer.deallocate(capacity: 1)
         self.init(bytes)
     }
 

@@ -27,7 +27,7 @@ import Event
 @_exported import HTTP
 @_exported import Crypto
 
-public enum WebSocketError: ErrorProtocol {
+public enum WebSocketError: Error {
     case noFrame
     case invalidOpCode
     case maskedFrameFromServer
@@ -106,15 +106,15 @@ public final class WebSocket {
         return closeEventEmitter.addListener(listen: listen)
     }
     
-    public func send(_ string: String, completion: ((Void) throws -> Void) -> Void = {_ in}) {
+    public func send(_ string: String, completion: @escaping ((Void) throws -> Void) -> Void = {_ in}) {
         send(.text, data: string.data, completion: completion)
     }
     
-    public func send(_ data: Data, completion: ((Void) throws -> Void) -> Void = {_ in}) {
+    public func send(_ data: Data, completion: @escaping ((Void) throws -> Void) -> Void = {_ in}) {
         send(.binary, data: data, completion: completion)
     }
     
-    public func send(_ convertible: DataConvertible, completion: ((Void) throws -> Void) -> Void = {_ in}) {
+    public func send(_ convertible: DataConvertible, completion: @escaping ((Void) throws -> Void) -> Void = {_ in}) {
         send(.binary, data: convertible.data, completion: completion)
     }
     
@@ -144,19 +144,19 @@ public final class WebSocket {
         }
     }
 
-    public func ping(_ data: Data = [], completion: ((Void) throws -> Void) -> Void = {_ in}) {
+    public func ping(_ data: Data = [], completion: @escaping ((Void) throws -> Void) -> Void = {_ in}) {
         send(.ping, data: data, completion: completion)
     }
     
-    public func ping(_ convertible: DataConvertible, completion: ((Void) throws -> Void) -> Void = {_ in}) {
+    public func ping(_ convertible: DataConvertible, completion: @escaping ((Void) throws -> Void) -> Void = {_ in}) {
         send(.ping, data: convertible.data, completion: completion)
     }
     
-    public func pong(_ data: Data = [], completion: ((Void) throws -> Void) -> Void = {_ in}) {
+    public func pong(_ data: Data = [], completion: @escaping ((Void) throws -> Void) -> Void = {_ in}) {
         send(.pong, data: data, completion: completion)
     }
     
-    public func pong(_ convertible: DataConvertible, completion: ((Void) throws -> Void) -> Void = {_ in}) {
+    public func pong(_ convertible: DataConvertible, completion: @escaping ((Void) throws -> Void) -> Void = {_ in}) {
         send(.pong, data: convertible.data, completion: completion)
     }
     
@@ -221,7 +221,7 @@ public final class WebSocket {
     }
     
     private func validateFrame(_ frame: Frame) throws {
-        func fail(_ error: ErrorProtocol) throws -> ErrorProtocol {
+        func fail(_ error: Error) throws -> Error {
             try close(.protocolError)
             return error
         }
@@ -268,7 +268,7 @@ public final class WebSocket {
     }
     
     private func processFrame(_ frame: Frame) throws {
-        func fail(_ error: ErrorProtocol) throws -> ErrorProtocol {
+        func fail(_ error: Error) throws -> Error{
             try close(.protocolError)
             return error
         }
@@ -325,7 +325,7 @@ public final class WebSocket {
                 if let rawCloseCode = rawCloseCode {
                     let closeCode = CloseCode(code: rawCloseCode)
                     if closeCode.isValid {
-                        try close(closeCode ?? .normal, reason: closeReason)
+                        try close(closeCode, reason: closeReason)
                         try closeEventEmitter.emit((closeCode, closeReason))
                     } else {
                         throw try fail(WebSocketError.invalidCloseCode)
@@ -346,7 +346,7 @@ public final class WebSocket {
         }
     }
     
-    private func send(_ opCode: Frame.OpCode, data: Data, completion: ((Void) throws -> Void) -> Void = { _ in }) {
+    private func send(_ opCode: Frame.OpCode, data: Data, completion: @escaping ((Void) throws -> Void) -> Void = { _ in }) {
         do {
             let maskKey: Data
             if mode == .client {
@@ -368,7 +368,7 @@ public final class WebSocket {
         }
     }
     
-    static func accept(loop: Loop = Loop.defaultLoop, key: String, completion: ((Void) throws -> String?) -> Void) {
+    static func accept(loop: Loop = Loop.defaultLoop, key: String, completion: @escaping ((Void) throws -> String?) -> Void) {
         var encoded: String? = nil
         
         Process.qwork(loop: loop, onThread: {
