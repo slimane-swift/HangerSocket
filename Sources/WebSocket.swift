@@ -368,16 +368,11 @@ public final class WebSocket {
         }
     }
     
-    static func accept(loop: Loop = Loop.defaultLoop, key: String, completion: @escaping ((Void) throws -> String?) -> Void) {
+    static func accept(key: String, completion: @escaping ((Void) throws -> String?) -> Void) {
         var encoded: String? = nil
-        
-        Process.qwork(loop: loop, onThread: {
-            encoded = Base64.encode(sha1((key + GUID).data))
-        }, onFinish: {
-            completion {
-                encoded
-            }
-        })
+        completion {
+            Base64.encode(sha1((key + GUID).data))
+        }
     }
     
 }
